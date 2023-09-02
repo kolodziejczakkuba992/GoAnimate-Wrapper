@@ -38,59 +38,61 @@ module.exports = (voiceName, text) => {
 				break;
 			}
 			case "polly": {
-				var buffers = [];
-				var req = https.request(
-					{
-						hostname: "pollyvoices.com",
+                var req = https.request({
+                        hostname: "voicemaker.in",
 						port: "443",
-						path: "/api/sound/add",
-						method: "POST",
-						headers: {
-							"Content-Type": "application/x-www-form-urlencoded",
-						},
-					},
-					(r) => {
+                        path: "/voice/standard",
+                        method: "POST",
+                        headers: {
+							"content-type": "application/json",
+							referer: "https://voicemaker.in/",
+                            "x-requested-with": "XMLHttpRequest",
+                        },
+                    },
+                    (r) => {
+						var buffers = [];
 						r.on("data", (b) => buffers.push(b));
-						r.on("end", () => {
-							var json = JSON.parse(Buffer.concat(buffers));
-							if (json.file) get(`https://pollyvoices.com${json.file}`).then(res);
-							else rej();
+                        r.on("end", () => {
+							const json = Buffer.concat(buffers);
+							const beg = json.indexOf('"path":') + 9;
+					        const end = json.indexOf('",', beg);
+					        const sub = json.subarray(beg, end).toString();
+							console.log("Successfully retrieved MP3 stream:");
+							console.log(`https://voicemaker.in${sub}`);
+							get(`https://voicemaker.in${sub}`).then(res).catch(rej);
 						});
-					}
-				);
-				req.write(qs.encode({ text: text, voice: voice.arg }));
-				req.end();
-				break;
-			}
-			case "cepstral":
-			case "voiceforge": {
-				https.get("https://www.voiceforge.com/demo", (r) => {
-					const cookie = r.headers["set-cookie"];
-					var q = qs.encode({
-						voice: voice.arg,
-						voiceText: text,
+						r.on("error", rej);
 					});
-					var buffers = [];
-					https.get(
-						{
-							host: "www.voiceforge.com",
-							path: `/demos/createAudio.php?${q}`,
-							headers: { Cookie: cookie },
-						},
-						(r) => {
-							r.on("data", (b) => buffers.push(b));
-							r.on("end", () => {
-								const html = Buffer.concat(buffers);
-								const beg = html.indexOf('id="mp3Source" src="') + 20;
-								const end = html.indexOf('"', beg);
-								const loc = html.subarray(beg, end).toString();
-								get(`https://www.voiceforge.com${loc}`).then(res).catch(rej);
-							});
-						}
-					);
-				});
-				break;
+					req.write(`{"Engine":"standard","Provider":"ai101","OutputFormat":"mp3","VoiceId":"${voice.arg}","LanguageCode":"${voice.language}-${voice.country}","SampleRate":"22050","effect":"default","master_VC":"advanced","speed":"0","master_volume":"0","pitch":"0","Text":"${text}","TextType":"text","fileName":""}`);
+					req.end();
+					break;
 			}
+			case "cepstral": {
+                https.get('https://www.cepstral.com/en/demos', r => {
+                    const cookie = r.headers['set-cookie'];
+                    var q = qs.encode({
+                        voice: voice.arg,
+                        voiceText: text,
+                        rate: 170,
+                        pitch: 1,
+                        sfx: 'none',
+                    });
+                    var buffers = [];
+                    var req = https.get({
+                        host: 'www.cepstral.com',
+                        path: `/demos/createAudio.php?${q}`,
+                        headers: { Cookie: cookie },
+                        method: 'GET',
+                    }, r => {
+                        r.on('data', b => buffers.push(b));
+                        r.on('end', () => {
+                            var json = JSON.parse(Buffer.concat(buffers));
+                            get(`https://www.cepstral.com${json.mp3_loc}`).then(res).catch(rej);
+                        })
+                    });
+                });
+                break;
+            }
 			case "vocalware": {
 				var [eid, lid, vid] = voice.arg;
 				var cs = md5(`${eid}${lid}${vid}${text}1mp35883747uetivb9tb8108wfj`);
@@ -200,7 +202,7 @@ module.exports = (voiceName, text) => {
 			case "readloud": {
 				const req = https.request(
 					{
-						host: "readloud.net",
+						host: "gonutts.net",
 						path: voice.arg,
 						method: "POST",
 						port: "443",
@@ -216,7 +218,7 @@ module.exports = (voiceName, text) => {
 							const beg = html.indexOf("/tmp/");
 							const end = html.indexOf(".mp3", beg) + 4;
 							const sub = html.subarray(beg, end).toString();
-							const loc = `https://readloud.net${sub}`;
+							const loc = `https://gonutts.net${sub}`;
 							get(loc).then(res).catch(rej);
 						});
 						r.on("error", rej);
