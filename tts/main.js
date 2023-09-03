@@ -200,35 +200,42 @@ module.exports = (voiceName, text) => {
 				break;
 			}
 			case "acapela": {
-				var q = qs.encode({
-					cl_login: "VAAS_MKT",
-					req_snd_type: "",
-					req_voice: voice.arg,
-					cl_app: "seriousbusiness",
-					req_text: text,
-					cl_pwd: "M5Awq9xu",
-				});
-				http.get(
-					{
-						host: "vaassl3.acapela-group.com",
-						path: `/Services/AcapelaTV/Synthesizer?${q}`,
-					},
-					(r) => {
-						var buffers = [];
-						r.on("data", (d) => buffers.push(d));
-						r.on("end", () => {
-							const html = Buffer.concat(buffers);
-							const beg = html.indexOf("&snd_url=") + 9;
-							const end = html.indexOf("&", beg);
-							const sub = html.subarray(beg + 4, end).toString();
-							if (!sub.startsWith("://")) return rej();
-							get(`https${sub}`).then(res).catch(rej);
-						});
-						r.on("error", rej);
-					}
-				);
-				break;
-			}
+		                const req = https.request(
+						{
+							host: "lazypy.ro",
+							path: "/tts/request_tts.php",
+							method: "POST",
+							headers: {
+								"Content-type": "application/x-www-form-urlencoded"
+							}
+						},
+						(r) => {
+							let body = "";
+							r.on("data", (b) => body += b);
+							r.on("end", () => {
+								const json = JSON.parse(body);
+								console.log(JSON.stringify(json, undefined, 2))
+								if (json.success !== true) {
+									return rej(json.error_msg);
+								}
+
+								https.get(json.audio_url, (r) => {
+								res(r);
+								});							
+							});
+							r.on("error", rej);
+						}
+						
+					).on("error", rej);
+					req.end(
+						new URLSearchParams({
+							text: text,
+							voice: voice.arg,
+							service: "Acapela",
+						}).toString()
+					);
+					break;
+				}
 			case "readloud": {
 				const req = https.request(
 					{
