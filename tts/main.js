@@ -128,35 +128,25 @@ module.exports = (voiceName, text) => {
 				break;
 			}
 			case "voiceforge": {
-					let fakeEmail = [];
-					for (let c = 0; c < 15; c++) fakeEmail.push(~~(65 + Math.random() * 26));
-					const email = `${String.fromCharCode.apply(null, fakeEmail)}@gmail.com`;
-
-					const q = new URLSearchParams({						
+				const q = new URLSearchParams({						
 						msg: text,
 						voice: voice.arg,
-						email
+						email: "null",
 					}).toString();
 					
 					https.get({
 						host: "api.voiceforge.com",
 						path: `/swift_engine?${q}`,
 						headers: { 
-							'User-Agent': 'just_audio/2.7.0 (Linux;Android 11) ExoPlayerLib/2.15.0',
 							HTTP_X_API_KEY: '8b3f76a8539',
 							'Accept-Encoding': 'identity',
 							'Icy-Metadata': '1',
-						 },
-					},
-					(r) => {
-						var buffers = [];
-						r.on("data", (d) => buffers.push(d));
-						r.on("end", () => res(Buffer.concat(buffers)));
-						r.on("error", rej);
-					}
-				);
-				break;
-			}
+						 }
+					}, (r) => {
+						fileUtil.convertToMp3(r, "wav").then(res).catch(rej);
+					}).on("error", rej);
+					break;
+				}
 			case "voicery": {
 				var q = qs.encode({
 					text: text,
