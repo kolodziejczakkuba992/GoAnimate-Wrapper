@@ -189,43 +189,6 @@ module.exports = (voiceName, text) => {
 				);
 				break;
 			}
-			case "acapela": {
-		                const req = https.request(
-						{
-							host: "lazypy.ro",
-							path: "/tts/request_tts.php",
-							method: "POST",
-							headers: {
-								"Content-type": "application/x-www-form-urlencoded"
-							}
-						},
-						(r) => {
-							let body = "";
-							r.on("data", (b) => body += b);
-							r.on("end", () => {
-								const json = JSON.parse(body);
-								console.log(JSON.stringify(json, undefined, 2))
-								if (json.success !== true) {
-									return rej(json.error_msg);
-								}
-
-								https.get(json.audio_url, (r) => {
-								res(r);
-								});							
-							});
-							r.on("error", rej);
-						}
-						
-					).on("error", rej);
-					req.end(
-						new URLSearchParams({
-							text: text,
-							voice: voice.arg,
-							service: "Acapela",
-						}).toString()
-					);
-					break;
-				}
 			case "readloud": {
 				const req = https.request(
 					{
